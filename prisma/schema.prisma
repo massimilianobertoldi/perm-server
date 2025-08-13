@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  email         String    @unique
+  passwordHash  String
+  name          String
+  role          Role
+
+  enrollments   Enrollment[]
+  permissions   StudentTeacherPermission[]
+}
+
+model Teacher {
+  id                     Int                       @id @default(autoincrement())
+  name                   String
+  maxStudentsPerLesson   Int                       @default(1)
+
+  availabilities         TeacherAvailability[]
+  lessons                Lesson[]
+  permissions            StudentTeacherPermission[]
+}
+
+model TeacherAvailability {
+  id         Int     @id @default(autoincrement())
+  teacher    Teacher @relation(fields: [teacherId], references: [id])
+  teacherId  Int
+
+  // 0 = Sunday ... 6 = Saturday
+  dayOfWeek  Int
+  // Stored as HH:MM (24h)
+  startTime  String
+  endTime    String
+}
+
+model Lesson {
+  id         Int       @id @default(autoincrement())
+  teacher    Teacher   @relation(fields: [teacherId], references: [id])
+  teacherId  Int
+  startAt    DateTime
+  endAt      DateTime
+  capacity   Int
+
+  enrollments Enrollment[]
+
+  @@index([teacherId, startAt])
+}
+
+model Enrollment {
+  id         Int      @id @default(autoincrement())
+  lesson     Lesson   @relation(fields: [lessonId], references: [id])
+  lessonId   Int
+  student    User     @relation(fields: [studentId], references: [id])
+  studentId  Int
+  createdAt  DateTime @default(now())
+
+  @@unique([lessonId, studentId])
+}
+
+model StudentTeacherPermission {
+  id         Int      @id @default(autoincrement())
+  student    User     @relation(fields: [studentId], references: [id])
+  studentId  Int
+  teacher    Teacher  @relation(fields: [teacherId], references: [id])
+  teacherId  Int
+  createdAt  DateTime @default(now())
+
+  @@unique([studentId, teacherId])
+}
